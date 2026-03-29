@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deepfake Detector</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Deepfake Detector</h1>
+    <p class="subtitle">
+      Upload a video file and get prediction, probability, explainability panels, and a downloadable PDF report.
+    </p>
+
+    <form id="uploadForm">
+      <input type="file" id="videoFile" accept=".mp4,.mov,.avi,.mkv" required>
+      <button type="submit">Run Detection</button>
+    </form>
+
+    <div id="loading" class="loading hidden">Analysing video, please wait...</div>
+
+    <div id="result" class="hidden">
+      <h2>Prediction Result</h2>
+
+      <div class="metrics">
+        <div class="card">
+          <h3>Prediction</h3>
+          <p id="predictionText"></p>
+        </div>
+        <div class="card">
+          <h3>Fake Probability</h3>
+          <p id="probabilityText"></p>
+        </div>
+      </div>
+
+      <div id="messageBox" class="message"></div>
+
+      <div class="reason-box">
+        <h3>Why this prediction?</h3>
+        <ul id="reasonList"></ul>
+      </div>
+
+      <h2>Explainability Panels</h2>
+      <div class="evidence-grid">
+        <div>
+          <img id="framesPanel" alt="Frames panel">
+          <p>Sampled frame evidence</p>
+        </div>
+        <div>
+          <img id="gradcamPanel" alt="Grad-CAM panel">
+          <p>Grad-CAM explanation</p>
+        </div>
+        <div>
+          <img id="shapPanel" alt="SHAP panel">
+          <p>SHAP-style surrogate explanation</p>
+        </div>
+      </div>
+
+      <br>
+      <a id="reportLink" class="download-btn" href="#" target="_blank">Download PDF Report</a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const loading = document.getElementById("loading");
+    const result = document.getElementById("result");
+    const predictionText = document.getElementById("predictionText");
+    const probabilityText = document.getElementById("probabilityText");
+    const framesPanel = document.getElementById("framesPanel");
+    const gradcamPanel = document.getElementById("gradcamPanel");
+    const shapPanel = document.getElementById("shapPanel");
+    const reportLink = document.getElementById("reportLink");
+    const messageBox = document.getElementById("messageBox");
+    const reasonList = document.getElementById("reasonList");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fileInput = document.getElementById("videoFile");
+      if (!fileInput.files.length) return;
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      loading.classList.remove("hidden");
+      result.classList.add("hidden");
+      reasonList.innerHTML = "";
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Prediction failed.");
+        }
+
+        loading.classList.add("hidden");
+        result.classList.remove("hidden");
+
+        predictionText.textContent = data.prediction.toUpperCase();
+        probabilityText.textContent = data.fake_probability.toFixed(4);
+
+        framesPanel.src = data.frames_panel_url + "?t=" + Date.now();
+        gradcamPanel.src = data.gradcam_panel_url + "?t=" + Date.now();
+        shapPanel.src = data.shap_panel_url + "?t=" + Date.now();
+        reportLink.href = data.report_url;
+
+        if (data.prediction === "fake") {
+          messageBox.textContent = "This video is predicted as FAKE by the model.";
+          messageBox.className = "message fake";
+        } else {
+          messageBox.textContent = "This video is predicted as REAL by the model.";
+          messageBox.className = "message real";
+        }
+
+        data.reason_text.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          reasonList.appendChild(li);
+        });
+
+      } catch (err) {
+        loading.classList.add("hidden");
+        alert(err.message);
+      }
+    });
+  </script>
+</body>
+</html>
