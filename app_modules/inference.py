@@ -1,6 +1,6 @@
 import torch
-
-from .config import MODEL_PATH, DEVICE
+from huggingface_hub import hf_hub_download
+from .config import DEVICE, HF_REPO_ID, HF_FILENAME, HF_TOKEN
 from .model import DeepfakeModel
 from .utils import FFPPInferencePreprocessor
 from .explainability import (
@@ -16,12 +16,21 @@ _preprocessor_cache = None
 
 def load_model():
     global _model_cache
+
     if _model_cache is None:
+        # Download model from Hugging Face Hub
+        model_path = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=HF_FILENAME
+                    )
+        
         model = DeepfakeModel(pretrained=False).to(DEVICE)
-        state = torch.load(MODEL_PATH, map_location=DEVICE)
+        state = torch.load(model_path, map_location=DEVICE)
         model.load_state_dict(state)
         model.eval()
+
         _model_cache = model
+
     return _model_cache
 
 
