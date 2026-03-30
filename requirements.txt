@@ -17,3 +17,4 @@ reportlab
 pyyaml
 pillow
 scikit-image
+huggingface_hub
