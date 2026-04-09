@@ -20,7 +20,14 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/reports", StaticFiles(directory="reports"), name="reports")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    #return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+    request=request, 
+    name="index.html", 
+    context={"user": "Adekanmi Adeyinka"}
+)
 
 def validate_upload(file: UploadFile):
     ext = Path(file.filename).suffix.lower()
